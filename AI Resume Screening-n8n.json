@@ -1,0 +1,398 @@
+{
+  "name": "AI Resume Screening and Application Tracking System",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Job Application Form",
+        "formDescription": "we'll get back to you soon\n",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "full name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Gmail",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "LinkedIn"
+            },
+            {
+              "fieldLabel": "Resume",
+              "fieldType": "file",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -864,
+        -80
+      ],
+      "id": "3653d9d6-f9b4-47a7-853f-36b2917d1307",
+      "name": "On form submission",
+      "webhookId": "dbed69c4-d430-4e17-8683-8420057aff9b"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "Resume",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -640,
+        -80
+      ],
+      "id": "24947fae-8642-4c13-a3ea-4ac8c5aceaca",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Rule 1:Do not exceed maximum of 75 w0rds.As an AI with advanced capabilities in talent acquisition,analyze a candidate resume against a job description.output must be in ${output_language}.\nStructure:1.compatability rating:1-10 with rationale\n2.ATS score:realistic number out of 100 such as 43,76,89,reflecting keyword and skills allignment.\n3.Recommendation:Advise if candidate should be interviewed with reasoning.\nJob description:\"Python Developer\" at GK Companies AI Resume:${resume}\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -416,
+        -80
+      ],
+      "id": "10c5747f-4461-4a61-b7c5-b8f55f2204ad",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -408,
+        152
+      ],
+      "id": "e95d4347-f6fe-4c24-a1f2-d7b83f2c1839",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"ats_score\":82,\n  \"summary\":\"Your resume is well structured and highlights relevant experience,but could use more targeted keywords to improve ATS campatability.\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -280,
+        152
+      ],
+      "id": "7c00ef60-338a-4731-81bd-7b517e24eff0",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "48714408-b62b-4de4-8931-60dc1c053f45",
+              "leftValue": "={{ $json.output.ats_score }}",
+              "rightValue": 30,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -64,
+        -80
+      ],
+      "id": "2084f7f6-07b5-4745-a5ed-669a88a45528",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "11XmMPU-pd8NugmKA0AN3A7i78283pj-z6fZVA7UBKBc",
+          "mode": "list",
+          "cachedResultName": "Shortlisted Students",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11XmMPU-pd8NugmKA0AN3A7i78283pj-z6fZVA7UBKBc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11XmMPU-pd8NugmKA0AN3A7i78283pj-z6fZVA7UBKBc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Full Name": "={{ $('On form submission').item.json['full name'] }}",
+            "E-mail": "={{ $('On form submission').item.json.Gmail }}",
+            "Linkedin": "={{ $('On form submission').item.json.LinkedIn }}",
+            "AI Rating and Summary": "={{ $json.output.ats_score }}\n{{ $json.output.summary }}",
+            "CV": "={{ $('On form submission').item.json.Resume[0].filename }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "CV",
+              "displayName": "CV",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Full Name",
+              "displayName": "Full Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "E-mail",
+              "displayName": "E-mail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Linkedin",
+              "displayName": "Linkedin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI Rating and Summary",
+              "displayName": "AI Rating and Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        160,
+        -80
+      ],
+      "id": "dcf113cc-0117-4b43-916a-50b482ecd6c5",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "V3XU0dyUXkWwpoan",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "grandhikeerthi0@gmail.com",
+        "subject": "=New Candidate CV Awaiting Review",
+        "message": "=You are an expert ATS Resume Screener and Technical Recruiter.  JOB DESCRIPTION: {{$('On form submission').item.json['Job Description'] || $json['Job Description'] || 'Full Stack Developer with React, Node.js, MongoDB, AWS'}}  TASK: 1. Extract from resume: Full Name, Email, Phone, Skills (list), Experience (years), Education. 2. Compare resume against JOB DESCRIPTION. 3. Give a match score from 0-100 based on:    - 50% Skills match with JD    - 30% Experience relevance    - 20% Education / Projects relevance  4. Give detailed reasoning.  OUTPUT FORMAT - Return ONLY valid JSON, no extra text: {   \"name\": \"Candidate Name\",   \"email\": \"candidate@email.com\",   \"phone\": \"9999999999\",   \"skills\": [\"React\", \"Node.js\"],   \"experience_years\": 2,   \"match_score\": 85,   \"is_qualified\": true,   \"reasoning\": \"Strong match in React, Node...\",   \"missing_skills\": [\"AWS\"] }  RULES: - If you can't find email/phone, return null. - Be strict. Don't inflate scores. - is_qualified = true only if match_score >= 70",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        384,
+        -80
+      ],
+      "id": "1999090d-bb4f-42af-ac41-7c1f9bffc74f",
+      "name": "Send a message",
+      "webhookId": "5b54a04a-4cc9-428f-b480-8b8d6aa49cd2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oXeMVYjVyEtoUT8x",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('On form submission').item.json.Gmail }}",
+        "subject": "we have received your cv",
+        "message": "=Dear,{{ $('On form submission').item.json['full name'] }}\nThankyou for Submitting your CV We have received it and will review it shortly.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        608,
+        -80
+      ],
+      "id": "1f0a0ff8-78f4-496b-a113-4c1d192c32ed",
+      "name": "Send a message1",
+      "webhookId": "0cd3938f-d8b8-478a-95f2-cb6ff5bf38fd",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oXeMVYjVyEtoUT8x",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5b09e5cd-cc69-4160-a65f-123216ea2a89",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e19a032355e8c5a5a5eac8183df04654a959c658957f6c2f0cadcfb3e5cf280b"
+  },
+  "nodeGroups": [],
+  "id": "o6EflyUtIA1lLjHd",
+  "tags": []
+}
